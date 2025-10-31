@@ -1,12 +1,19 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
+	"image"
+	"io"
+	"net/http"
+	"os"
 	"os/exec"
 	"os/user"
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/qeesung/image2ascii/convert"
 )
 
 var defaults = map[string]string{
@@ -205,6 +212,33 @@ func getMediaInfo() MediaInfo {
 
 func main() {
 	info := getMediaInfo()
+
+	convertOptions := convert.DefaultOptions
+	convertOptions.FixedHeight = 20
+	convertOptions.FixedWidth = 40
+	converter := convert.NewImageConverter()
+
+	response, err := http.Get(info.ArtURL)
+	if err != nil {
+		panic(err)
+	}
+	
+	defer response.Body.Close()
+
+	if response.StatusCode != http.StatusOK {
+		fmt.Println("received non 200 response status", response.Status)
+		os.Exit(1)
+	}
+
+	imageBytes, err := io.ReadAll(response.Body) 
+	if err != nil {
+		fmt.Printf("failed to read body")
+		os.Exit(1)
+	}
+
+	img, _, err := image.Decode(bytes.NewReader(imageBytes))
+
+	fmt.Print(converter.Image2ASCIIString(img, &convertOptions))
 
 	fmt.Println("--- Media Player Information ---")
 	fmt.Printf("Player: %s\n", info.PlayerName)
