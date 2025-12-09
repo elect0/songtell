@@ -43,5 +43,6 @@ Works with most MPRIS2-compatible players out of the box:
 - Does **not work with youtube** because artwork ratios are incompatible.
 
 ## Acknowledgment
-This project is inspired by/enhanced from https://github.com/ekrlstd/songfetch.
+This project is enhanced from https://github.com/ekrlstd/songfetch.
+
 
