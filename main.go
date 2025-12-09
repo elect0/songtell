@@ -222,7 +222,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	
+
 	defer response.Body.Close()
 
 	if response.StatusCode != http.StatusOK {
@@ -230,7 +230,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	imageBytes, err := io.ReadAll(response.Body) 
+	imageBytes, err := io.ReadAll(response.Body)
 	if err != nil {
 		fmt.Printf("failed to read body")
 		os.Exit(1)
