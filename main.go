@@ -1,19 +1,13 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
-	"image"
-	"io"
-	"net/http"
 	"os"
 	"os/exec"
 	"os/user"
 	"regexp"
 	"strconv"
 	"strings"
-
-	"github.com/qeesung/image2ascii/convert"
 )
 
 var defaults = map[string]string{
@@ -123,7 +117,7 @@ func getMediaInfo() MediaInfo {
 	rawDuration := getPlayerctlMetadata("{{ mpris:length }}")
 	if rawDuration != "" {
 		dur, err := strconv.ParseInt(rawDuration, 10, 64)
-		if err != nil {
+		if err == nil {
 			info.Duration = dur
 			info.DurationFormatted = formatDuration(dur)
 		} else {
@@ -213,47 +207,72 @@ func getMediaInfo() MediaInfo {
 func main() {
 	info := getMediaInfo()
 
-	convertOptions := convert.DefaultOptions
-	convertOptions.FixedHeight = 20
-	convertOptions.FixedWidth = 40
-	converter := convert.NewImageConverter()
-
-	response, err := http.Get(info.ArtURL)
+	imageString, err := Convert(info.ArtURL)
 	if err != nil {
-		panic(err)
-	}
-
-	defer response.Body.Close()
-
-	if response.StatusCode != http.StatusOK {
-		fmt.Println("received non 200 response status", response.Status)
+		fmt.Println(err)
 		os.Exit(1)
 	}
 
-	imageBytes, err := io.ReadAll(response.Body)
-	if err != nil {
-		fmt.Printf("failed to read body")
-		os.Exit(1)
+	normal := ""
+	bright := ""
+	for i := 0; i < 8; i++ {
+		normal += fmt.Sprintf("\033[4%dm   \033[0m", i)
+
 	}
 
-	img, _, err := image.Decode(bytes.NewReader(imageBytes))
+	for i := 0; i < 8; i++ {
+		bright += fmt.Sprintf("\033[10%dm   \033[0m", i)
+	}
 
-	fmt.Print(converter.Image2ASCIIString(img, &convertOptions))
+	const reset = "\033[0m"
 
-	fmt.Println("--- Media Player Information ---")
-	fmt.Printf("Player: %s\n", info.PlayerName)
-	fmt.Printf("Status: %s\n", info.Status)
-	fmt.Printf("Title:  %s\n", info.Title)
-	fmt.Printf("Artist: %s\n", info.Artist)
-	fmt.Printf("Album:  %s\n", info.Album)
-	fmt.Printf("URL:    %s\n", info.URL)
-	fmt.Printf("Art URL: %s\n", info.ArtURL)
-	fmt.Printf("Duration: %s (raw: %d us)\n", info.DurationFormatted, info.Duration)
-	fmt.Printf("Position: %s (raw: %d us)\n", formatDuration(info.Position), info.Position)
-	fmt.Printf("Loop: %s\n", info.LoopStatus)
-	fmt.Printf("Shuffle: %s\n", info.ShuffleStatus)
-	fmt.Println("\n--- System Audio Information ---")
-	fmt.Printf("Audio Backend: %s\n", info.AudioBackend)
-	fmt.Printf("Volume: %s\n", info.Volume)
-	fmt.Printf("User: %s\n", info.CurrentUser)
+	const cyan = "\033[32m"
+
+	infoLines := []string{
+		fmt.Sprintf("  \033[32m%s\033[0m#\033[32m%s\033[0m \n", info.CurrentUser, info.PlayerName),
+
+		fmt.Sprintf("\n"),
+
+		fmt.Sprintf("  %s%s \u25c6 %s%s\n", cyan, strings.Repeat("\u2500", 10), strings.Repeat("\u2500", 10), reset),
+		fmt.Sprintf("  \n"),
+		fmt.Sprintf("  \033[32mstatus\033[0m ~ %s\n", strings.ToLower(info.Status)),
+		fmt.Sprintf("\n"),
+
+		fmt.Sprintf("  %s%s \u25c6 %s%s\n", cyan, strings.Repeat("\u2500", 10), strings.Repeat("\u2500", 10), reset),
+
+		fmt.Sprintf("\n"),
+		fmt.Sprintf("  \033[32mtitle\033[0m ~ %s\n", info.Title),
+		fmt.Sprintf("  \033[32malbum\033[0m ~ %s\n", info.Album),
+		fmt.Sprintf("  \033[32martist\033[0m ~ %s\n", info.Artist),
+		fmt.Sprintf("  \033[32mduration\033[0m ~ %s / %s (\033[32m%d%s\033[0m)\n", formatDuration(info.Position), info.DurationFormatted, int(float64(info.Position)/float64(info.Duration)*100.0), "%"),
+		fmt.Sprintf("\n"),
+
+		fmt.Sprintf("  %s%s \u25c6 %s%s\n", cyan, strings.Repeat("\u2500", 10), strings.Repeat("\u2500", 10), reset),
+
+		fmt.Sprintf("\n"),
+		fmt.Sprintf("  \033[32mvol\033[0m ~ %s\n", info.Volume),
+		fmt.Sprintf("  \033[32mloop\033[0m ~ %s\n", strings.ToLower(info.LoopStatus)),
+		fmt.Sprintf("  \033[32mshuffle\033[0m ~ %s\n", info.ShuffleStatus),
+		fmt.Sprintf("  \033[32martwork\033[0m ~ %s\n", info.ArtURL),
+
+		fmt.Sprintf("\n"),
+
+		fmt.Sprintf("  %s%s \u25c6 %s%s\n", cyan, strings.Repeat("\u2500", 10), strings.Repeat("\u2500", 10), reset),
+
+		fmt.Sprintf("\n"),
+		fmt.Sprintf("  \033[32maudio\033[0m ~ %s\n", strings.ToLower(info.AudioBackend)),
+
+		fmt.Sprintf("\n"),
+		fmt.Sprintf("  %s\n", bright),
+		fmt.Sprintf("  %s\n", normal),
+	}
+
+	for i, v := range imageString {
+		if i >= len(infoLines) {
+			fmt.Printf("%s\n", v)
+		} else {
+			fmt.Printf("%s\t%s", v, infoLines[i])
+		}
+	}
+
 }

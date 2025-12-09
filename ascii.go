@@ -15,7 +15,7 @@ import (
 const (
 	targetCols = 60
 	widthRatio = 2.2
-	charRamp = "@@&&996633));;..  "
+	charRamp = "@&&%#$OEHMBDR8GAS0oVvC()s~-+=/|li.,:;' qzjkx"
 )
 
 func Convert(artURI string) ([]string, error) {
@@ -32,11 +32,11 @@ func Convert(artURI string) ([]string, error) {
 	w, h := bounds.Dx(), bounds.Dy()
 	newHeight := int(math.Max(1, (float64(h)/float64(w))*float64(targetCols)/widthRatio))
 
-	resizedImg := resizeNearest(img, targetCols, newHeight)
+	resizedImg := resizeNearest(img, newHeight, targetCols)
 	rampRunes := []rune(charRamp)
 
 	var asciiArtLines []string
-	for y := 0; y < newHeight; y++ {
+	for y := range newHeight {
 		var lineBuilder strings.Builder
 		lineBuilder.WriteString("  ") // left
 
@@ -51,10 +51,14 @@ func Convert(artURI string) ([]string, error) {
 			if idx >= len(rampRunes)-1 {
 				idx = len(rampRunes) - 1
 			}
+
 			char := rampRunes[idx]
 
 			// colors
-			ansiCode := getNearestColor(r8, g8, b8)
+			rBoost := math.Min(255, float64(r8)*1.1)
+			gBoost := math.Min(255, float64(g8)*1.1)
+			bBoost := math.Min(255, float64(b8)*1.1)
+			ansiCode := getNearestColor(uint8(rBoost), uint8(gBoost), uint8(bBoost))
 			lineBuilder.WriteString(fmt.Sprintf("\x1b[%dm%c\x1b[0m", ansiCode, char))
 		}
 		lineBuilder.WriteString(" ")
@@ -69,14 +73,17 @@ func getNearestColor(r, g, b uint8) int {
 		r, g, b float64
 		code    int
 	}{
+		// --- Normale (Darker) ---
 		{0, 0, 0, 30},       // Black
 		{170, 0, 0, 31},     // Red
 		{0, 170, 0, 32},     // Green
-		{170, 85, 0, 33},    // Yellow (Brownish)
+		{170, 85, 0, 33},    // Yellow
 		{0, 0, 170, 34},     // Blue
 		{170, 0, 170, 35},   // Magenta
 		{0, 170, 170, 36},   // Cyan
-		{170, 170, 170, 37}, // White (Gray)
+		{170, 170, 170, 37}, // White (Light Gray)
+
+		// --- Aprinse (Bright) ---
 		{85, 85, 85, 90},    // Bright Black (Gray)
 		{255, 85, 85, 91},   // Bright Red
 		{85, 255, 85, 92},   // Bright Green
